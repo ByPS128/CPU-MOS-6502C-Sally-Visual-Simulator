@@ -81,10 +81,15 @@ const sb = run('        *=$0600\n        BRK\n        *=$0700\nt       .byte "Hi
 check('.byte string H', sb.mem[0x0700], 0x28);
 check('.byte string i', sb.mem[0x0701], 0x69);
 
-// 6: Hello World (Atari port) — reads screen addr from SAVMSC, writes via (ptr),Y
+// EOR #$80 toggles the inverse-video bit
+const eo = run(prog(['LDA #$28', 'EOR #$80', 'STA $0710']));
+check('EOR #$80 inverse', eo.mem[0x0710], 0xA8);
+
+// 6: Hello World (inverse blink) — writes via SAVMSC ptr, then blinks (XOR $80)
 const port = run(DEMOS[6].src, (m) => { m[0x58] = 0x00; m[0x59] = 0x10; });  // OS sets SAVMSC -> $1000
 const HW = [0x28, 0x65, 0x6C, 0x6C, 0x6F, 0x00, 0x37, 0x6F, 0x72, 0x6C, 0x64, 0x01]; // "Hello World!"
-check('Atari port -> $1000', JSON.stringify(Array.from(port.mem.slice(0x1000, 0x100C))) === JSON.stringify(HW) ? 1 : 0, 1);
+const portOk = HW.every((b, i) => { const v = port.mem[0x1000 + i]; return v === b || v === (b ^ 0x80); });
+check('blink demo text @ $1000 (normal or inverse)', portOk ? 1 : 0, 1);
 
 console.log(allPass ? '\nALL LOGIC TESTS PASS' : '\nLOGIC TEST FAILURES');
 process.exit(allPass ? 0 : 1);

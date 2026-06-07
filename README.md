@@ -22,6 +22,8 @@ p5.js se načítá z CDN, takže při prvním spuštění je třeba připojení 
 - **speed** — rychlost běhající tečky (každý krok trvá stejně dlouho bez ohledu
   na délku drátku; pomalu = nejnázornější, doprava = turbo)
 - **ANTIC live** — zapne/vypne video koprocesor (viz níže)
+- **turbo (no animation)** — vypne animaci tečky; CPU jede naplno (mnoho instrukcí
+  za snímek) a ANTIC jen překresluje video paměť. Pro programy se smyčkami (blikání).
 
 ## ANTIC — video koprocesor (hvězda Atari)
 
@@ -52,10 +54,11 @@ Když je zaškrtnuto **ANTIC live**, běží autenticky v **textovém režimu**:
 5. **Compare & branch** — `INX` / `CPX` / `BNE`; porovnání nastavuje Carry a Zero.
 6. **Poke Atari hardware** — zápis do `$Dxxx` jde přes adresové dekódování do
    **paměťově mapovaných čipů** (GTIA / POKEY / PIA), které se přitom **rozsvítí**.
-7. **Hello World (Atari port)** — port reálného MADS programu: adresu obrazovky
+7. **Hello World (inverse blink)** — port reálného MADS programu: adresu obrazovky
    si **vyzvedne ze stínového registru SAVMSC** (ne natvrdo), postaví zero‑page
-   ukazatel a kopíruje řetězec přes `(ptr),Y`. `.byte "Hello World!"` se
-   automaticky převede na atari screen codes.
+   ukazatel a kopíruje řetězec přes `(ptr),Y` (`.byte "Hello World!"` se automaticky
+   převede na screen codes). Pak **nekonečně bliká** — čeká, XORne každý znak `$80`
+   (přepne **inverzní video**), opakuje. Nejlépe se zaškrtnutým **turbo**.
 
 Vlastní programy lze přidat do pole `DEMOS` v `js/program.js`.
 

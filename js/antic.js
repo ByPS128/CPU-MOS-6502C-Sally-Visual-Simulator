@@ -74,6 +74,16 @@ function anticPaintRow(row) {
   for (let c = 0; c < anticCols; c++) tvCells[row * anticCols + c] = mem[(anticScan + c) & 0xffff];
 }
 
+// Turbo mode: no DMA animation — ANTIC just repaints the whole screen each frame
+// from video memory (per the display list's screen base). No cycle-stealing.
+function anticPaintAll() {
+  if (nmiFlash > 0) nmiFlash--;
+  const base = anticScreenStart();
+  for (let r = 0; r < anticRows; r++)
+    for (let c = 0; c < anticCols; c++) tvCells[r * anticCols + c] = mem[(base + r * anticCols + c) & 0xffff];
+  anticHalt = false; anticDMA = null;
+}
+
 // Advance ANTIC by one animation frame. Sets anticHalt (CPU pauses while true).
 function anticUpdate() {
   if (nmiFlash > 0) nmiFlash--;

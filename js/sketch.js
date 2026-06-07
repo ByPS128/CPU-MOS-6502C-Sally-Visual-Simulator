@@ -3,7 +3,9 @@
 const NOTE_FRAMES = 16;     // how long a "note" step is held
 const INTER_DELAY = 2;      // pause between micro-steps
 const INSTR_DELAY = 3;      // extra pause between instructions
+const TURBO_BUDGET = 1500;  // instructions per frame in turbo (no-animation) mode
 
+let turbo = false;
 let stepQueue = [];
 let activeAnim = null;
 let autoRun = false;
@@ -27,7 +29,8 @@ function setup() {
 
 function draw() {
   background(255);
-  anticUpdate();          // ANTIC runs continuously, independent of the CPU
+  if (turbo) { if (anticLive) anticPaintAll(); }   // turbo: ANTIC just repaints, no DMA animation
+  else anticUpdate();                              // normal: ANTIC walks the DL, animated
   advance();              // CPU; pauses itself while ANTIC owns the bus
   drawHeader();
   drawASM(currentLine);
@@ -41,6 +44,10 @@ function draw() {
 
 function advance() {
   if (halted) return;
+  if (turbo) {                    // turbo: run many full instructions per frame, no animation
+    if (autoRun) for (let k = 0; k < TURBO_BUDGET && !halted; k++) runInstructionFast();
+    return;
+  }
   if (anticHalt) return;          // ANTIC has the bus — Sally is paused (cycle-stealing)
   if (delayTimer > 0) { delayTimer--; return; }
 
@@ -83,6 +90,15 @@ function loadNext() {
   const { steps, halt } = execute();
   stepQueue.push(...steps);
   willHalt = halt;
+}
+
+// Turbo: execute one whole instruction immediately (no animation).
+function runInstructionFast() {
+  currentLine = lineFor(regs.PC);
+  if (currentLine < 0) { halted = true; lastNote = 'No instruction at $' + hex4(regs.PC); return; }
+  const { steps, halt } = execute();
+  for (const s of steps) s.apply();
+  if (halt) { halted = true; lastNote = 'HALTED (BRK)'; }
 }
 
 function lineFor(pc) {
@@ -203,7 +219,7 @@ function drawHeader() {
 function drawFooter() {
   const y = CH - 42;
   noStroke(); fill(0); textAlign(LEFT, TOP); textSize(12);
-  const mode = halted ? 'HALTED' : autoRun ? 'RUNNING' : 'STEP MODE';
+  const mode = halted ? 'HALTED' : autoRun ? (turbo ? 'TURBO' : 'RUNNING') : (turbo ? 'TURBO (paused)' : 'STEP MODE');
   text('Mode: ' + mode +
     '     A=$' + hex2(regs.A) + '  X=$' + hex2(regs.X) + '  Y=$' + hex2(regs.Y) +
     '  SP=$' + hex2(regs.SP) + '  PC=$' + hex4(regs.PC) +
@@ -231,6 +247,7 @@ function bindControls() {
   on('step', () => {
     if (halted) return;
     autoRun = false;
+    if (turbo) { runInstructionFast(); return; }
     if (!activeAnim && stepQueue.length === 0 && delayTimer === 0) loadNext();
   });
   on('reset', () => resetMachine());
@@ -238,6 +255,13 @@ function bindControls() {
   // ANTIC live toggle
   const ant = document.getElementById('antic');
   if (ant) { anticLive = ant.checked; ant.addEventListener('change', () => { anticLive = ant.checked; }); }
+
+  // Turbo toggle (no animation; CPU runs full speed, ANTIC just repaints)
+  const tb = document.getElementById('turbo');
+  if (tb) {
+    turbo = tb.checked;
+    tb.addEventListener('change', () => { turbo = tb.checked; stepQueue = []; activeAnim = null; delayTimer = 0; });
+  }
 
   // populate the demo dropdown and load on change
   const sel = document.getElementById('demo');

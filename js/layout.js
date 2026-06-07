@@ -287,16 +287,20 @@ function drawTV() {
   const gx = TV_X + (TV_W - gw) / 2, gy = TV_Y + 30 + (areaH - gh) / 2;
 
   noStroke(); fill(244); rect(gx - 4, gy - 4, gw + 8, gh + 8);    // screen background
-  fill(0);
   const font = (typeof ATARI_FONT !== 'undefined') ? ATARI_FONT : null;
   if (font) for (let i = 0; i < cols * rows; i++) {
-    const code = (typeof tvCells !== 'undefined' && tvCells[i] != null) ? (tvCells[i] & 0x7f) : 0;
-    const glyph = font[code]; if (!glyph) continue;
+    const raw = (typeof tvCells !== 'undefined' && tvCells[i] != null) ? tvCells[i] : 0;
+    const inv = (raw & 0x80) !== 0;          // bit 7 = inverse video
+    const glyph = font[raw & 0x7f];
     const cc = i % cols, rr = Math.floor(i / cols);
+    const x0 = gx + cc * 8 * cell, y0 = gy + rr * 8 * cell;
+    if (inv) { noStroke(); fill(0); rect(x0, y0, 8 * cell, 8 * cell); }   // inverse cell bg
+    if (!glyph) continue;
+    fill(inv ? 244 : 0);                      // glyph ink (light on black if inverse)
     for (let gr = 0; gr < 8; gr++) {
       const byte = glyph[gr]; if (!byte) continue;
       for (let gb = 0; gb < 8; gb++) if (byte & (0x80 >> gb))
-        rect(gx + (cc * 8 + gb) * cell, gy + (rr * 8 + gr) * cell, cell, cell);
+        rect(x0 + gb * cell, y0 + gr * cell, cell, cell);
     }
   }
   noFill(); stroke(0); strokeWeight(1); rect(gx - 4, gy - 4, gw + 8, gh + 8);

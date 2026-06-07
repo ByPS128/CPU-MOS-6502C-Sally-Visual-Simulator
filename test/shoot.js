@@ -96,6 +96,22 @@ const path = require('path');
   }
   const portOk = portState && portState.ptr === 0x1000 && portState.scr0 === 0x28 && portState.tv0 === 0x28 && pMax > 0x0600;
   await page.screenshot({ path: path.join(__dirname, 'shot-port.png') });
+  await page.click('#pause');
+
+  // --- turbo mode + inverse blink: $1000 must toggle normal ($28) <-> inverse ($A8) ---
+  await page.check('#turbo');
+  await page.selectOption('#demo', '6');
+  await page.click('#run');
+  let sawNormal = false, sawInv = false, bshot = false;
+  for (let i = 0; i < 150; i++) {
+    const v = await page.evaluate(() => mem[0x1000]);
+    if (v === 0x28) sawNormal = true;
+    if (v === 0xA8) { sawInv = true; if (!bshot) { await page.screenshot({ path: path.join(__dirname, 'shot-blink.png') }); bshot = true; } }
+    if (sawNormal && sawInv) break;
+    await page.waitForTimeout(100);
+  }
+  const blinkOk = sawNormal && sawInv;
+  await page.uncheck('#turbo');
 
   console.log('speed resp :', speedOk ? 'PASS' : 'FAIL', '(slow=' + slow + ' fast=' + fast + ')');
   console.log('ANTIC text :', anticOk ? 'PASS' : 'FAIL', 'render=' + renderOk + ' integration=' + integOk);
@@ -103,6 +119,7 @@ const path = require('path');
   console.log('final state:', finalOk ? 'PASS' : 'FAIL', JSON.stringify(fs));
   console.log('chip decode:', pokeOk ? 'PASS' : 'FAIL', 'chipSeen=' + chipSeen, JSON.stringify(ps));
   console.log('Atari port :', portOk ? 'PASS' : 'FAIL', JSON.stringify(portState));
+  console.log('turbo blink:', blinkOk ? 'PASS' : 'FAIL', 'normal=' + sawNormal + ' inverse=' + sawInv);
   console.log('console errors:', logs.length ? logs.join('\n') : '(none)');
-  process.exit(speedOk && anticOk && irOk && finalOk && pokeOk && portOk && logs.length === 0 ? 0 : 1);
+  process.exit(speedOk && anticOk && irOk && finalOk && pokeOk && portOk && blinkOk && logs.length === 0 ? 0 : 1);
 })();

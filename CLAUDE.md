@@ -56,6 +56,11 @@ util → opcodes → program → assembler → cpu → anticfont → antic → l
   moves, `anticHalt` is true and the CPU pauses (cycle-stealing → HALT pin lights); at JVB
   it rests (`anticIdle`, VBLANK) and pulses NMI. All ANTIC timing also derives from
   `stepFrames()`.
+- **Turbo mode** (`turbo` flag / checkbox): skips all animation — `runInstructionFast()`
+  runs `TURBO_BUDGET` whole instructions per frame and `anticPaintAll()` just repaints
+  the screen (no DMA dot, no HALT). Needed for loop-heavy programs (e.g. the blink demo).
+- **Inverse video:** screen-code bit 7 ($80) = inverse. `drawTV` renders such cells with
+  a black background and light glyph. XOR-ing screen bytes with $80 toggles it.
 
 ## Memory map (in the simulated 64 KB `mem`)
 

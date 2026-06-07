@@ -105,13 +105,12 @@ loop    INX           ; X = X + 1
 `,
   },
   {
-    name: 'Hello World (Atari port)',
+    name: 'Hello World (inverse blink)',
     src: `; ---- ported from a MADS "Hello World" ----
-; Instead of a hardcoded screen address, it asks
-; the OS shadow register SAVMSC where the screen
-; is, builds a zero-page pointer, and copies the
-; string through it with (ptr),Y. The .byte "..."
-; string is auto-converted to Atari screen codes.
+; Asks SAVMSC where the screen is, copies the
+; string there via a pointer, then loops forever:
+; wait, flip bit 7 of each char (inverse video),
+; repeat -> the text blinks. (Use the turbo box!)
 SAVMSC = $58          ; OS shadow: screen-memory pointer
 ptr    = $80          ; our zero-page pointer
         *=$0600
@@ -122,11 +121,25 @@ ptr    = $80          ; our zero-page pointer
         LDY #$00
 copy    LDA text,Y    ; next character (screen code)
         CMP #$9B      ; Atari end-of-line = end marker
-        BEQ done
+        BEQ blink
         STA (ptr),Y   ; store it through the pointer
         INY
         BNE copy
-done    BRK           ; ANTIC keeps displaying
+; ---- blink loop (forever) ----
+blink   LDX #$60      ; outer delay count
+wait    LDY #$00
+inner   DEY
+        BNE inner     ; inner delay (256x)
+        DEX
+        BNE wait      ; outer delay
+        LDY #$00
+flip    LDA (ptr),Y   ; read a character back
+        EOR #$80      ; toggle inverse-video bit
+        STA (ptr),Y   ; write it back
+        INY
+        CPY #$0C      ; 12 characters
+        BNE flip
+        JMP blink     ; do it again
 
 text    .byte "Hello World!",$9B
 `,

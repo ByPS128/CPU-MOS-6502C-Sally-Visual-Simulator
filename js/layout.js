@@ -149,17 +149,21 @@ function drawVRAM() {
   textSize(12);
   for (let i = 0; i < 16; i++) {
     const a = base + i, v = mem[a];
-    if (a === lastMemAddr) { noStroke(); fill(0); rect(VR_X + 8, y - 2, VR_W - 16, 20); fill(255); }
-    else fill(0);
-    noStroke();
-    // internal screen code -> displayable char (mask bit 7 = inverse video; the
-    // hex value still shows it's inverse). $00-$3F→ASCII$20-$5F, $60-$7F=lowercase.
+    const active = (a === lastMemAddr);
+    const inv = (v & 0x80) !== 0;          // bit 7 = inverse video
+    // internal screen code -> displayable char ($00-$3F→ASCII$20-$5F, $60-$7F=lowercase)
     const code = v & 0x7f;
     const ch = (code === 0) ? '·'
       : (code < 0x40) ? String.fromCharCode(code + 0x20)
         : (code >= 0x60) ? String.fromCharCode(code) : '?';
+    if (active) { noStroke(); fill(0); rect(VR_X + 8, y - 2, VR_W - 16, 20); }
+    noStroke(); fill(active ? 255 : 0);
     textAlign(LEFT, TOP);  text('$' + hex4(a), VR_X + 14, y);
-    textAlign(RIGHT, TOP); text('$' + hex2(v) + '  ' + ch, VR_X + VR_W - 14, y);
+    textAlign(RIGHT, TOP); text('$' + hex2(v), VR_X + VR_W - 30, y);
+    // the character, drawn reverse-video when the inverse bit is set (matches the TV)
+    const cxp = VR_X + VR_W - 22;
+    if (inv && !active) { noStroke(); fill(0); rect(cxp - 2, y - 2, 15, 18); fill(255); }
+    textAlign(LEFT, TOP); text(ch, cxp + 1, y);
     y += 22;
   }
   noStroke(); fill(110); textSize(9); textAlign(LEFT, BOTTOM);

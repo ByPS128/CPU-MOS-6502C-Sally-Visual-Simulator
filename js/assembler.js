@@ -1,6 +1,9 @@
 // --- A tiny two-pass assembler for the demo source ----------------------------
+// Supports: `*=` origin, labels, the `.byte` data directive, and addressing
+// modes imm/zp/abs/abs,X/abs,Y/rel (a `,X`/`,Y` suffix selects the indexed mode).
 // Writes machine code into `mem` and returns metadata used by the UI:
 //   { origin, end, lines:[{raw, addr|null}], addrToLine:{addr:lineIndex} }
+// `origin` is the entry point = address of the FIRST instruction.
 
 function assemble(src, mem) {
   const rawLines = src.replace(/\r/g, '').split('\n');

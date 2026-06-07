@@ -1,6 +1,10 @@
 // --- Schematic geometry + drawing (white background, black wireframe) ---------
-// A simplified Atari-800-style architecture: CPU package (registers / ALU /
-// decoder) -> ADDRESS bus + DATA bus -> RAM and memory-mapped chips.
+// A simplified Atari-800-style architecture, laid out left-to-right:
+//   ASM panel | CPU package (registers/ALU/decoder) | ADDRESS+DATA buses |
+//   memory-mapped chips | TV | DISPLAY LIST | VRAM window | RAM window
+// The CPU dot and ANTIC dot animate along the buses; the TV shows what ANTIC
+// paints; the Display List panel disassembles ANTIC's program (live-highlighted);
+// VRAM is a static window into screen memory, RAM follows the last access.
 
 const CW = 1690, CH = 820;
 

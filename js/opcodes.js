@@ -1,6 +1,7 @@
 // --- 6502 opcode table (the subset this simulator understands) ----------------
 // Each entry: [mnemonic, addressing-mode, opcode-byte]
-// Modes: imp (implied), imm (#immediate), zp (zero page), abs (absolute), rel (relative branch)
+// Modes: imp (implied), imm (#immediate), zp (zero page), abs (absolute),
+//        absx (absolute,X), absy (absolute,Y), rel (relative branch)
 const OPTABLE = [
   ['LDA','imm',0xA9], ['LDA','zp',0xA5], ['LDA','abs',0xAD], ['LDA','absx',0xBD], ['LDA','absy',0xB9],
   ['LDX','imm',0xA2], ['LDX','zp',0xA6], ['LDX','abs',0xAE], ['LDX','absy',0xBE],

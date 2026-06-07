@@ -57,10 +57,25 @@ Vlastní programy lze přidat do pole `DEMOS` v `js/program.js`.
 
 ## Architektura na obrazovce
 
-CPU pouzdro (registry A/X/Y/SP/PC/IR/ALU + stavový registr P s vlajkami N V B D I Z **C**,
-řídicí/přerušovací piny φ2, R/W, HALT, IRQ, NMI, RES) → **adresová** (16b) a **datová** (8b)
-sběrnice → **RAM** + paměťově mapované čipy. Podle adresy se rozsvítí to zařízení, které
-na danou adresu „odpovídá" (RAM, OS ROM, ANTIC/GTIA, POKEY/PIA).
+Rozložení zleva doprava:
+
+```
+ASM panel | CPU pouzdro | ADRESOVÁ+DATOVÁ sběrnice | čipy | TV | DISPLAY LIST | VRAM | RAM
+```
+
+- **CPU pouzdro** — registry A/X/Y/SP/PC/IR/ALU + stavový registr P s vlajkami
+  N V B D I Z **C**, řídicí/přerušovací piny φ2, R/W, HALT, IRQ, NMI, RES.
+- **Sběrnice** — adresová (16b) a datová (8b); po nich běhají tečky (■ adresa, ● data).
+- **Paměťově mapované čipy** — RAM / OS ROM / ANTIC-GTIA / POKEY-PIA; podle adresy
+  se rozsvítí to zařízení, které „odpovídá" (adresové dekódování).
+- **TV** — co ANTIC vykresluje (textový režim přes font).
+- **DISPLAY LIST** — disassembler ANTICova programu (adresa · bajty · význam) se
+  **živým zvýrazněním** právě prováděného řádku a adresou, ze které ANTIC čte.
+- **VRAM** — statické kukátko do obrazové paměti (`$1000`) se znakovým sloupcem;
+  vidíš, jak ho program plní.
+- **RAM** — kukátko do paměti, které **sleduje poslední přístup** (skáče podle čtení/zápisu).
+
+Dvě kukátka = dva pohledy do téže 64 KB RAM: jedno fixní na VRAM, druhé dynamické.
 
 ## Struktura
 

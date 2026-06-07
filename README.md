@@ -32,7 +32,7 @@ Když je zaškrtnuto **ANTIC live**, běží autenticky v **textovém režimu**:
 - OS přednastaví **Display List** (`$0700`) a obrazovou paměť (`$1000`, textové
   pole 20×4). ANTIC každý snímek prochází DL (`blank` → `mode 2 + LMS` → `JVB`).
 - Pro každý textový řádek si **přes DMA přečte z obrazové paměti kódy znaků** a
-  podle nich vyhledá glyfy ve **skutečném atari fontu** (`ATARIPL`) — na malé **TV**
+  podle nich vyhledá glyfy ve **skutečném atari fontu** (`STANDARD`) — na malé **TV**
   se vykreslí text. **CPU jen zapisuje znaky do `$1000`; ANTIC je sám zobrazí**
   (žádný „flush"), takže písmenka naskakují, jak je program píše.
 - Při DMA si **krátce půjčí sběrnici** a **zastaví 6502C „Sally"** (rozsvítí se pin
@@ -90,7 +90,7 @@ Dvě kukátka = dva pohledy do téže 64 KB RAM: jedno fixní na VRAM, druhé dy
 | `js/program.js` | demo programy (`DEMOS`) |
 | `js/assembler.js` | dvouprůchodový assembler (`*=`, `.byte`, labely) → strojový kód |
 | `js/cpu.js` | stav CPU + interpret generující „mikrokroky" pro animaci |
-| `js/anticfont.js` | atari font (128 glyfů) vygenerovaný z `ATARIPL.png` |
+| `js/anticfont.js` | atari font (128 glyfů) vygenerovaný z `STANDARD.png` |
 | `js/antic.js` | ANTIC: interpret Display Listu, textový režim, DMA/HALT |
 | `js/layout.js` | geometrie schématu + vykreslování (vč. TV) |
 | `js/sketch.js` | p5 smyčka, stavový automat krokování/běhu, animace teček |

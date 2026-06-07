@@ -152,8 +152,10 @@ function resolveTerm(t, labels) {
 function isStr(t) { return t.length >= 2 && t[0] === '"' && t[t.length - 1] === '"'; }
 
 // ATASCII character -> Atari internal screen code (so text shows correctly).
+// Atari internal order: $00-$3F = ATASCII $20-$5F, $40-$5F = graphics ($00-$1F),
+// $60-$7F = lowercase ($60-$7F unchanged).
 function atasciiToScreen(c) {
-  if (c <= 0x1F) return (c + 0x40) & 0xff;
-  if (c <= 0x7F) return (c - 0x20) & 0xff;
-  return c & 0xff;
+  if (c <= 0x1F) return (c + 0x40) & 0xff;   // control/graphics
+  if (c <= 0x5F) return (c - 0x20) & 0xff;   // space, punctuation, digits, @, A-Z
+  return c & 0xff;                            // $60-$7F lowercase: unchanged
 }

@@ -76,14 +76,14 @@ const d5 = run(DEMOS[5].src); check('GTIA $D01A', d5.mem[0xD01A], 0x0E); check('
 const iy = run('ptr = $80\n        *=$0600\n        LDA #$00\n        STA ptr\n        LDA #$20\n        STA ptr+1\n        LDY #$05\n        LDA #$AB\n        STA (ptr),Y\n        BRK\n');
 check('STA (zp),Y target', iy.mem[0x2005], 0xAB);
 
-// --- .byte "string" -> Atari screen codes (H=$28, i=$49) ---
+// --- .byte "string" -> Atari screen codes (H=$28 uppercase, i=$69 lowercase) ---
 const sb = run('        *=$0600\n        BRK\n        *=$0700\nt       .byte "Hi"\n');
 check('.byte string H', sb.mem[0x0700], 0x28);
-check('.byte string i', sb.mem[0x0701], 0x49);
+check('.byte string i', sb.mem[0x0701], 0x69);
 
 // 6: Hello World (Atari port) — reads screen addr from SAVMSC, writes via (ptr),Y
 const port = run(DEMOS[6].src, (m) => { m[0x58] = 0x00; m[0x59] = 0x10; });  // OS sets SAVMSC -> $1000
-const HW = [0x28, 0x45, 0x4C, 0x4C, 0x4F, 0x00, 0x37, 0x4F, 0x52, 0x4C, 0x44, 0x01]; // "Hello World!"
+const HW = [0x28, 0x65, 0x6C, 0x6C, 0x6F, 0x00, 0x37, 0x6F, 0x72, 0x6C, 0x64, 0x01]; // "Hello World!"
 check('Atari port -> $1000', JSON.stringify(Array.from(port.mem.slice(0x1000, 0x100C))) === JSON.stringify(HW) ? 1 : 0, 1);
 
 console.log(allPass ? '\nALL LOGIC TESTS PASS' : '\nLOGIC TEST FAILURES');

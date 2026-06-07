@@ -33,7 +33,7 @@ util → opcodes → program → assembler → cpu → anticfont → antic → l
 | `js/program.js` | `DEMOS[]` (selectable demo programs), `currentDemoSrc`, `setDemo()` |
 | `js/assembler.js` | two-pass assembler: `*=`, labels, `NAME=val` equates, `label+N` math, `.byte` (numbers or a `"string"` auto-converted to Atari screen codes), modes imm/zp/abs/abs,X/abs,Y/(zp),Y/rel |
 | `js/cpu.js` | CPU state (`regs`, `mem`, flags) + `execute()` → bus-aware micro-steps |
-| `js/anticfont.js` | `ATARI_FONT[128][8]` baked from `ATARIPL.png` (generated; committed) |
+| `js/anticfont.js` | `ATARI_FONT[128][8]` baked from `STANDARD.png` (generated; committed) |
 | `js/antic.js` | ANTIC: walks the Display List, text-mode font render, DMA/HALT/VBLANK |
 | `js/layout.js` | geometry + all drawing (schematic, TV, Display List panel, VRAM/RAM) |
 | `js/sketch.js` | p5 `setup`/`draw`, step/run state machine, dot animation, controls |

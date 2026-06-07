@@ -152,8 +152,10 @@ function drawVRAM() {
     if (a === lastMemAddr) { noStroke(); fill(0); rect(VR_X + 8, y - 2, VR_W - 16, 20); fill(255); }
     else fill(0);
     noStroke();
-    // internal screen code -> displayable char (codes $00-$5F map to ASCII $20-$7F)
-    const ch = (v === 0) ? '·' : (v < 0x60 ? String.fromCharCode(v + 0x20) : '?');
+    // internal screen code -> displayable char ($00-$3F→ASCII$20-$5F, $60-$7F=lowercase, $40-$5F=graphics)
+    const ch = (v === 0) ? '·'
+      : (v < 0x40) ? String.fromCharCode(v + 0x20)
+        : (v >= 0x60) ? String.fromCharCode(v) : '?';
     textAlign(LEFT, TOP);  text('$' + hex4(a), VR_X + 14, y);
     textAlign(RIGHT, TOP); text('$' + hex2(v) + '  ' + ch, VR_X + VR_W - 14, y);
     y += 22;

@@ -340,15 +340,32 @@ function drawASM(currentLine) {
   drawBox(AX, AY, AW, AH);
   label('ASSEMBLY  —  ' + currentDemoName, AX + 10, AY + 8, 12);
 
-  let y = AY + 32;
+  const addrOf = (ln) => (ln.addr !== null && ln.addr !== undefined) ? hex4(ln.addr) + '  ' : '      ';
+  const avail = AW - 24;
+
+  // Auto-fit: shrink the font just enough that the widest line fits the panel
+  // (monospace scales linearly), so nothing ever spills into the schematic.
   textSize(13);
+  let maxW = 1;
+  for (const ln of asm.lines) maxW = Math.max(maxW, textWidth(addrOf(ln) + ln.raw));
+  const fs = Math.max(8, Math.min(13, Math.floor(13 * avail / maxW)));
+  const lh = fs + 6;
+
+  // clip to the panel interior as a safety net
+  drawingContext.save();
+  drawingContext.beginPath();
+  drawingContext.rect(AX + 4, AY + 24, AW - 8, AH - 28);
+  drawingContext.clip();
+
+  let y = AY + 32;
+  textSize(fs);
   asm.lines.forEach((ln, idx) => {
-    if (idx === currentLine) { noStroke(); fill(0); rect(AX + 6, y - 2, AW - 12, 19); fill(255); }
+    if (idx === currentLine) { noStroke(); fill(0); rect(AX + 6, y - 2, AW - 12, lh - 1); fill(255); }
     else fill(0);
     noStroke(); textAlign(LEFT, TOP);
-    const addr = (ln.addr !== null && ln.addr !== undefined) ? hex4(ln.addr) + '  ' : '      ';
-    text(addr + ln.raw, AX + 12, y);
-    y += 19;
+    text(addrOf(ln) + ln.raw, AX + 12, y);
+    y += lh;
   });
+  drawingContext.restore();
   fill(0);
 }

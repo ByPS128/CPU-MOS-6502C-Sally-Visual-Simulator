@@ -39,12 +39,13 @@ function setNZ(p, v) {
 }
 function flagSet(mask) { return (regs.P & mask) !== 0; }
 
-function modeText(mode, operand, addr) {
+function modeText(mode, operand, addr, zp) {
   if (mode === 'imm') return '#$' + hex2(operand);
   if (mode === 'zp')  return '$' + hex2(addr);
   if (mode === 'abs') return '$' + hex4(addr);
   if (mode === 'absx') return '$' + hex4(addr) + ',X';
   if (mode === 'absy') return '$' + hex4(addr) + ',Y';
+  if (mode === 'indy') return '($' + hex2(zp) + '),Y';
   if (mode === 'rel') return '$' + hex4(addr);
   return '';
 }
@@ -80,10 +81,16 @@ function execute() {
     ea = (addr + (mode === 'absx' ? regs.X : regs.Y)) & 0xffff;          // effective = base + index
     operand = mem[ea];
   }
+  else if (mode === 'indy') {                                            // (zp),Y indirect indexed
+    const zp = mem[(pc + 1) & 0xffff];
+    addr = mem[zp] | (mem[(zp + 1) & 0xff] << 8);                        // 16-bit pointer from zero page
+    ea = (addr + regs.Y) & 0xffff;                                       // + Y = effective address
+    operand = mem[ea];
+  }
   else if (mode === 'rel') { const o = mem[(pc + 1) & 0xffff]; addr = (fall + (o < 0x80 ? o : o - 256)) & 0xffff; }
 
   steps.push(step('MEM', 'IR', opcode,
-    'Read opcode $' + hex2(opcode) + ' = ' + mnemonic + ' ' + modeText(mode, operand, addr),
+    'Read opcode $' + hex2(opcode) + ' = ' + mnemonic + ' ' + modeText(mode, operand, addr, mem[(pc + 1) & 0xffff]),
     () => { regs.PC = fall; regs.IR = opcode; }, 'hex2', 'data', pc));
 
   // helpers ------------------------------------------------------------------

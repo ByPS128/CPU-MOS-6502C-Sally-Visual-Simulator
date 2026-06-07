@@ -81,11 +81,28 @@ const path = require('path');
   }
   const pokeOk = ps && ps.halted && ps.gtia === 0x0E && ps.pokey === 0xA0 && chipSeen && chipSeen !== 'RAM';
 
+  // --- Atari-port demo: reads SAVMSC -> (zp),Y pointer; ANTIC shows "Hello World!" ---
+  await page.evaluate(() => { const a = document.getElementById('antic'); if (!a.checked) { a.checked = true; anticLive = true; } });
+  await page.selectOption('#demo', '6');
+  await page.fill('#speed', '30');
+  await page.click('#run');
+  let portState = null, pMax = 0x0600, pshot = false;
+  for (let i = 0; i < 250; i++) {
+    portState = await page.evaluate(() => ({ pc: regs.PC, scr0: mem[0x1000], tv0: tvCells[0], ptr: (mem[0x81] << 8) | mem[0x80], dma: !!anticDMA }));
+    if (portState.pc > pMax) pMax = portState.pc;
+    if (portState.dma && !pshot) { await page.screenshot({ path: path.join(__dirname, 'shot-port.png') }); pshot = true; }
+    if (portState.scr0 === 0x28 && portState.tv0 === 0x28) break;  // 'H' written via pointer + painted
+    await page.waitForTimeout(120);
+  }
+  const portOk = portState && portState.ptr === 0x1000 && portState.scr0 === 0x28 && portState.tv0 === 0x28 && pMax > 0x0600;
+  await page.screenshot({ path: path.join(__dirname, 'shot-port.png') });
+
   console.log('speed resp :', speedOk ? 'PASS' : 'FAIL', '(slow=' + slow + ' fast=' + fast + ')');
   console.log('ANTIC text :', anticOk ? 'PASS' : 'FAIL', 'render=' + renderOk + ' integration=' + integOk);
   console.log('IR latch   :', irOk ? 'PASS' : 'FAIL', JSON.stringify(ir));
   console.log('final state:', finalOk ? 'PASS' : 'FAIL', JSON.stringify(fs));
   console.log('chip decode:', pokeOk ? 'PASS' : 'FAIL', 'chipSeen=' + chipSeen, JSON.stringify(ps));
+  console.log('Atari port :', portOk ? 'PASS' : 'FAIL', JSON.stringify(portState));
   console.log('console errors:', logs.length ? logs.join('\n') : '(none)');
-  process.exit(speedOk && anticOk && irOk && finalOk && pokeOk && logs.length === 0 ? 0 : 1);
+  process.exit(speedOk && anticOk && irOk && finalOk && pokeOk && portOk && logs.length === 0 ? 0 : 1);
 })();

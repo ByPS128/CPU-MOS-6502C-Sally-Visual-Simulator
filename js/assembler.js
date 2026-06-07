@@ -1,6 +1,7 @@
 // --- A tiny two-pass assembler for the demo source ----------------------------
-// Supports: `*=` origin, labels, the `.byte` data directive, and addressing
-// modes imm/zp/abs/abs,X/abs,Y/rel (a `,X`/`,Y` suffix selects the indexed mode).
+// Supports: `*=` origin, labels, `NAME = value` equates, `label+N`/`-N` math,
+// the `.byte` directive (numbers or a "quoted string" auto-converted to Atari
+// screen codes), and addressing modes imm/zp/abs/abs,X/abs,Y/(zp),Y/rel.
 // Writes machine code into `mem` and returns metadata used by the UI:
 //   { origin, end, lines:[{raw, addr|null}], addrToLine:{addr:lineIndex} }
 // `origin` is the entry point = address of the FIRST instruction.
@@ -25,6 +26,10 @@ function assemble(src, mem) {
     }
     if (text === '') { parsed.push(entry); continue; }
 
+    // Equate:  NAME = value   (defines a symbol/constant)
+    const eq = text.match(/^([A-Za-z_]\w*)\s*=\s*(.+)$/);
+    if (eq) { labels[eq[1]] = resolve(eq[2], labels) & 0xffff; parsed.push(entry); continue; }
+
     // Optional leading label: a token that is NOT a mnemonic and NOT a directive.
     let tokens = text.split(/\s+/);
     if (tokens.length && tokens[0].toLowerCase() !== '.byte' && !isMnemonic(tokens[0].replace(/:$/, ''))) {
@@ -33,12 +38,15 @@ function assemble(src, mem) {
     }
     if (tokens.length === 0) { parsed.push(entry); continue; }
 
-    // .byte directive: a list of comma-separated byte values placed in memory
+    // .byte directive: comma-separated values; a "quoted string" expands to one
+    // byte per character (converted to Atari screen codes).
     if (tokens[0].toLowerCase() === '.byte') {
       const args = tokens.slice(1).join(' ').split(',').map(s => s.trim()).filter(s => s.length);
       entry.data = args;
       entry.addr = pc;
-      pc += args.length;
+      let count = 0;
+      for (const a of args) count += isStr(a) ? (a.length - 2) : 1;
+      pc += count;
       parsed.push(entry);
       continue;
     }
@@ -60,7 +68,14 @@ function assemble(src, mem) {
     lines.push({ raw: entry.raw, addr: entry.addr });
     if (entry.data) {                            // .byte data block
       let a = entry.addr;
-      for (const tok of entry.data) mem[a++] = resolve(tok, labels) & 0xff;
+      for (const tok of entry.data) {
+        if (isStr(tok)) {
+          const s = tok.slice(1, -1);
+          for (const ch of s) mem[a++] = atasciiToScreen(ch.charCodeAt(0));
+        } else {
+          mem[a++] = resolve(tok, labels) & 0xff;
+        }
+      }
       return;
     }
     if (!entry.instr) return;
@@ -80,6 +95,9 @@ function assemble(src, mem) {
       const base = operand.replace(/,\s*[XYxy]\s*$/, '').trim();
       const v = resolve(base, labels) & 0xffff;
       mem[a] = v & 0xff; mem[a + 1] = (v >> 8) & 0xff;
+    } else if (mode === 'indy') {
+      const inner = operand.match(/^\(\s*(.+?)\s*\)\s*,\s*[Yy]\s*$/)[1];
+      mem[a] = resolve(inner, labels) & 0xff;   // zero-page pointer address
     } else if (mode === 'rel') {
       const target = resolve(operand, labels);
       const off = (target - (entry.addr + 2)) & 0xff;   // signed byte
@@ -96,6 +114,8 @@ function detectMode(mnem, operand) {
   if (BRANCHES.includes(mnem)) return 'rel';
   if (operand === '' || operand === undefined) return 'imp';
   if (operand.startsWith('#')) return 'imm';
+  // indirect indexed: (zp),Y  — must be checked before the plain ,Y case
+  if (/^\(\s*.+\s*\)\s*,\s*[Yy]\s*$/.test(operand)) return 'indy';
   // indexed: operand ends with ,X or ,Y
   const ix = operand.match(/,\s*([XYxy])\s*$/);
   if (ix) return ix[1].toUpperCase() === 'X' ? 'absx' : 'absy';
@@ -112,9 +132,28 @@ function parseNum(s) {
   return parseInt(s, 10);
 }
 
+// Resolve an operand expression: a single term, or terms joined by + / - .
 function resolve(operand, labels) {
-  operand = operand.trim();
-  if (operand.startsWith('$') || operand.startsWith('%') || /^[0-9]/.test(operand)) return parseNum(operand);
-  if (operand in labels) return labels[operand];
-  throw new Error('Unresolved symbol: ' + operand);
+  const parts = operand.split(/([+-])/).map(s => s.trim()).filter(s => s.length);
+  let total = resolveTerm(parts[0], labels);
+  for (let i = 1; i < parts.length; i += 2) {
+    const v = resolveTerm(parts[i + 1], labels);
+    total += (parts[i] === '-') ? -v : v;
+  }
+  return total & 0xffff;
+}
+function resolveTerm(t, labels) {
+  t = t.trim();
+  if (t.startsWith('$') || t.startsWith('%') || /^[0-9]/.test(t)) return parseNum(t);
+  if (t in labels) return labels[t];
+  throw new Error('Unresolved symbol: ' + t);
+}
+
+function isStr(t) { return t.length >= 2 && t[0] === '"' && t[t.length - 1] === '"'; }
+
+// ATASCII character -> Atari internal screen code (so text shows correctly).
+function atasciiToScreen(c) {
+  if (c <= 0x1F) return (c + 0x40) & 0xff;
+  if (c <= 0x7F) return (c - 0x20) & 0xff;
+  return c & 0xff;
 }

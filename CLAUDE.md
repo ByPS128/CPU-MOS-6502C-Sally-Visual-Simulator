@@ -31,7 +31,7 @@ util → opcodes → program → assembler → cpu → anticfont → antic → l
 | `js/util.js` | `hex2/hex4/bin8` formatting |
 | `js/opcodes.js` | opcode table for the supported 6502 subset; `OPENC`/`OPDECODE`, `MODELEN` |
 | `js/program.js` | `DEMOS[]` (selectable demo programs), `currentDemoSrc`, `setDemo()` |
-| `js/assembler.js` | two-pass assembler: `*=`, labels, `.byte`, modes imm/zp/abs/abs,X/abs,Y/rel |
+| `js/assembler.js` | two-pass assembler: `*=`, labels, `NAME=val` equates, `label+N` math, `.byte` (numbers or a `"string"` auto-converted to Atari screen codes), modes imm/zp/abs/abs,X/abs,Y/(zp),Y/rel |
 | `js/cpu.js` | CPU state (`regs`, `mem`, flags) + `execute()` → bus-aware micro-steps |
 | `js/anticfont.js` | `ATARI_FONT[128][8]` baked from `ATARIPL.png` (generated; committed) |
 | `js/antic.js` | ANTIC: walks the Display List, text-mode font render, DMA/HALT/VBLANK |
@@ -88,6 +88,11 @@ util → opcodes → program → assembler → cpu → anticfont → antic → l
 - **Geometry** lives in `layout.js` constants (`CW`, `BUS_END`, `RAM_X`, `VR_X`, `TV_X`,
   `DLP_X`, ...). Derived values (`RAM_TAPX`) follow automatically; if you move panels, also
   bump `#app max-width` in `index.html` and the viewport in `test/shoot.js`.
+- **ATASCII ≠ screen codes.** ANTIC text mode indexes the font by *internal screen
+  code*, not ASCII (internal = ascii − $20 for $20–$7F). Writing raw ASCII to screen
+  memory shows shifted/wrong glyphs — the classic Atari beginner bug. The assembler's
+  `.byte "string"` does this conversion for you (`atasciiToScreen`); demos that store
+  numeric codes use the internal values directly.
 - **Not cycle-accurate** — it's a teaching visualization (like the MECC original).
 - Git: line-ending warnings (LF→CRLF) on Windows are harmless. `gh` CLI is at
   `C:\Program Files\GitHub CLI\gh.exe` (not always on PATH in a fresh shell).

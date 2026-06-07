@@ -9,11 +9,12 @@ for (const f of ['util.js', 'opcodes.js', 'program.js', 'assembler.js', 'cpu.js'
 // expose what we need from the eval scope
 src += '\nmodule.exports = { assemble, execute, run, DEMOS };\n';
 src += `
-function run(prog) {
+function run(prog, setup) {
   mem = new Uint8Array(65536);
   regs = { A:0, X:0, Y:0, SP:0xFF, P:FU|FI, PC:0x0600, IR:0 };
   lastMemAddr = -1;
   asm = assemble(prog, mem);
+  if (setup) setup(mem);
   regs.PC = asm.origin;
   let g = 0, h = false;
   while (!h && g++ < 5000) { const r = execute(); for (const st of r.steps) st.apply(); h = r.halt; }
@@ -70,6 +71,20 @@ const d2 = run(DEMOS[2].src); check('16-bit lo', d2.mem[0x0710], 0x00); check('1
 const d3 = run(DEMOS[3].src); check('BCD mem', d3.mem[0x0710], 0x07);
 const d4 = run(DEMOS[4].src); check('Compare X', d4.X, 0x04); check('Compare mem', d4.mem[0x0710], 0x04);
 const d5 = run(DEMOS[5].src); check('GTIA $D01A', d5.mem[0xD01A], 0x0E); check('POKEY $D200', d5.mem[0xD200], 0xA0); check('PIA $D301', d5.mem[0xD301], 0x3C);
+
+// --- indirect indexed (zp),Y + equates + label arithmetic ---
+const iy = run('ptr = $80\n        *=$0600\n        LDA #$00\n        STA ptr\n        LDA #$20\n        STA ptr+1\n        LDY #$05\n        LDA #$AB\n        STA (ptr),Y\n        BRK\n');
+check('STA (zp),Y target', iy.mem[0x2005], 0xAB);
+
+// --- .byte "string" -> Atari screen codes (H=$28, i=$49) ---
+const sb = run('        *=$0600\n        BRK\n        *=$0700\nt       .byte "Hi"\n');
+check('.byte string H', sb.mem[0x0700], 0x28);
+check('.byte string i', sb.mem[0x0701], 0x49);
+
+// 6: Hello World (Atari port) — reads screen addr from SAVMSC, writes via (ptr),Y
+const port = run(DEMOS[6].src, (m) => { m[0x58] = 0x00; m[0x59] = 0x10; });  // OS sets SAVMSC -> $1000
+const HW = [0x28, 0x45, 0x4C, 0x4C, 0x4F, 0x00, 0x37, 0x4F, 0x52, 0x4C, 0x44, 0x01]; // "Hello World!"
+check('Atari port -> $1000', JSON.stringify(Array.from(port.mem.slice(0x1000, 0x100C))) === JSON.stringify(HW) ? 1 : 0, 1);
 
 console.log(allPass ? '\nALL LOGIC TESTS PASS' : '\nLOGIC TEST FAILURES');
 process.exit(allPass ? 0 : 1);

@@ -52,6 +52,10 @@ Když je zaškrtnuto **ANTIC live**, běží autenticky v **textovém režimu**:
 5. **Compare & branch** — `INX` / `CPX` / `BNE`; porovnání nastavuje Carry a Zero.
 6. **Poke Atari hardware** — zápis do `$Dxxx` jde přes adresové dekódování do
    **paměťově mapovaných čipů** (GTIA / POKEY / PIA), které se přitom **rozsvítí**.
+7. **Hello World (Atari port)** — port reálného MADS programu: adresu obrazovky
+   si **vyzvedne ze stínového registru SAVMSC** (ne natvrdo), postaví zero‑page
+   ukazatel a kopíruje řetězec přes `(ptr),Y`. `.byte "Hello World!"` se
+   automaticky převede na atari screen codes.
 
 Vlastní programy lze přidat do pole `DEMOS` v `js/program.js`.
 
@@ -100,9 +104,14 @@ inkrementy/dekrementy (INX/INY/DEX/DEY, INC/DEC), aritmetika a logika
 příznaky (CLC/SEC/CLD/SED/CLV), NOP, BRK.
 
 Adresovací režimy: immediate, zero page, absolute, **absolute,X / absolute,Y**,
-relative. Assembler umí direktivu **`.byte`** (datové tabulky). Aritmetika ADC/SBC
-podporuje i **decimal (BCD) režim** (SED/CLD). (Není cyklově přesné — jde o názornou
-výukovou vizualizaci, stejně jako originál MECC.)
+**(zp),Y nepřímé indexované**, relative. Aritmetika ADC/SBC podporuje i
+**decimal (BCD) režim** (SED/CLD).
+
+Assembler umí: `*=` origin, labely, **`NAME = value` equates**, **`label+N` aritmetiku**
+a direktivu **`.byte`** — buď čísla, nebo **`"řetězec"`, který se automaticky převede
+na atari screen codes** (proto se text zobrazí správně, ne posunutý jako ATASCII).
+
+(Není cyklově přesné — jde o názornou výukovou vizualizaci, stejně jako originál MECC.)
 
 ## Verifikace / testy
 

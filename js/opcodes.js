@@ -1,12 +1,14 @@
 // --- 6502 opcode table (the subset this simulator understands) ----------------
 // Each entry: [mnemonic, addressing-mode, opcode-byte]
 // Modes: imp (implied), imm (#immediate), zp (zero page), abs (absolute),
-//        absx (absolute,X), absy (absolute,Y), rel (relative branch)
+//        absx (absolute,X), absy (absolute,Y), indy ((zp),Y indirect indexed),
+//        rel (relative branch)
 const OPTABLE = [
   ['LDA','imm',0xA9], ['LDA','zp',0xA5], ['LDA','abs',0xAD], ['LDA','absx',0xBD], ['LDA','absy',0xB9],
   ['LDX','imm',0xA2], ['LDX','zp',0xA6], ['LDX','abs',0xAE], ['LDX','absy',0xBE],
   ['LDY','imm',0xA0], ['LDY','zp',0xA4], ['LDY','abs',0xAC], ['LDY','absx',0xBC],
-  ['STA','zp',0x85],  ['STA','abs',0x8D], ['STA','absx',0x9D], ['STA','absy',0x99],
+  ['STA','zp',0x85],  ['STA','abs',0x8D], ['STA','absx',0x9D], ['STA','absy',0x99], ['STA','indy',0x91],
+  ['LDA','indy',0xB1],
   ['STX','zp',0x86],  ['STX','abs',0x8E],
   ['STY','zp',0x84],  ['STY','abs',0x8C],
   ['TAX','imp',0xAA], ['TAY','imp',0xA8], ['TXA','imp',0x8A], ['TYA','imp',0x98],
@@ -25,7 +27,7 @@ const OPTABLE = [
   ['CLV','imp',0xB8], ['NOP','imp',0xEA], ['BRK','imp',0x00],
 ];
 
-const MODELEN = { imp: 1, imm: 2, zp: 2, abs: 3, absx: 3, absy: 3, rel: 2 };
+const MODELEN = { imp: 1, imm: 2, zp: 2, abs: 3, absx: 3, absy: 3, indy: 2, rel: 2 };
 const BRANCHES = ['BNE','BEQ','BCC','BCS','BPL','BMI'];
 
 // mnemonic+"/"+mode -> opcode   (for the assembler)

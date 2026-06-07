@@ -104,6 +104,33 @@ loop    INX           ; X = X + 1
         BRK
 `,
   },
+  {
+    name: 'Hello World (Atari port)',
+    src: `; ---- ported from a MADS "Hello World" ----
+; Instead of a hardcoded screen address, it asks
+; the OS shadow register SAVMSC where the screen
+; is, builds a zero-page pointer, and copies the
+; string through it with (ptr),Y. The .byte "..."
+; string is auto-converted to Atari screen codes.
+SAVMSC = $58          ; OS shadow: screen-memory pointer
+ptr    = $80          ; our zero-page pointer
+        *=$0600
+        LDA SAVMSC    ; screen address, low byte
+        STA ptr
+        LDA SAVMSC+1  ; screen address, high byte
+        STA ptr+1
+        LDY #$00
+copy    LDA text,Y    ; next character (screen code)
+        CMP #$9B      ; Atari end-of-line = end marker
+        BEQ done
+        STA (ptr),Y   ; store it through the pointer
+        INY
+        BNE copy
+done    BRK           ; ANTIC keeps displaying
+
+text    .byte "Hello World!",$9B
+`,
+  },
 ];
 
 let currentDemoSrc = DEMOS[0].src;

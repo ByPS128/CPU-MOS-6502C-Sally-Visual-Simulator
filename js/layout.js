@@ -2,7 +2,7 @@
 // A simplified Atari-800-style architecture: CPU package (registers / ALU /
 // decoder) -> ADDRESS bus + DATA bus -> RAM and memory-mapped chips.
 
-const CW = 1340, CH = 820;
+const CW = 1690, CH = 820;
 
 // ---- ASM panel ----
 const AX = 16, AY = 96, AW = 360, AH = 664;
@@ -18,12 +18,15 @@ const EDGE_R = COL_R_X;                                      // 605 (right col l
 
 // ---- buses ----
 const ADDR_BUS_Y = 225, DATA_BUS_Y = 285;
-const BUS_END = 1330;
+const BUS_END = 1668;
 const ADDR_PIN = { x: CPU_R, y: ADDR_BUS_Y };
 const DATA_PIN = { x: CPU_R, y: DATA_BUS_Y };
 
-// ---- RAM (active) ----
-const RAM_X = 1150, RAM_W = 180, RAM_Y = 315, RAM_H = 445;  // 315..760
+// ---- VRAM viewer (static window into RAM at the screen memory) ----
+const VR_X = 1300, VR_W = 176, VR_Y = 315, VR_H = 445;
+
+// ---- RAM (active, bus-connected device; window follows last access) ----
+const RAM_X = 1492, RAM_W = 176, RAM_Y = 315, RAM_H = 445;  // 315..760
 const RAM_TAPX = RAM_X + RAM_W / 2;                          // 1240
 const RAM_TOPY = RAM_Y;
 
@@ -37,6 +40,9 @@ const CHIPS = [
 
 // ---- TV (what ANTIC paints) ----
 const TV_X = 812, TV_Y = 455, TV_W = 232, TV_H = 240, TV_GRID = 184;
+
+// ---- Display List panel (ANTIC's "program", disassembled) ----
+const DLP_X = 1060, DLP_Y = 455, DLP_W = 224, DLP_H = 240;
 
 // Path the ANTIC DMA dot travels: RAM (picture data) -> data bus -> ANTIC.
 function anticDataPath() {
@@ -119,8 +125,96 @@ function drawSchematic(activeNode, activeDevice) {
   drawBuses();
   drawChips(activeDevice);
   drawTV();
+  drawDisplayList();
+  drawVRAM();
   drawRAM(activeDevice);
   drawCPU(activeNode);
+}
+
+// A second, STATIC window into RAM fixed at the screen memory ($1000), so you can
+// watch the Hello World program copy characters in (the RAM window jumps around).
+function drawVRAM() {
+  drawBox(VR_X, VR_Y, VR_W, VR_H);
+  label('VRAM — screen memory', VR_X + 10, VR_Y + 8, 11);
+  noStroke(); fill(110); textSize(9); textAlign(LEFT, TOP);
+  text('static window into RAM @ $1000', VR_X + 12, VR_Y + 24);
+  fill(0);
+
+  const base = 0x1000;
+  let y = VR_Y + 42;
+  textSize(12);
+  for (let i = 0; i < 16; i++) {
+    const a = base + i, v = mem[a];
+    if (a === lastMemAddr) { noStroke(); fill(0); rect(VR_X + 8, y - 2, VR_W - 16, 20); fill(255); }
+    else fill(0);
+    noStroke();
+    const ch = (v === 0) ? '·' : (v < 0x40 ? String.fromCharCode(v + 0x20) : '?');
+    textAlign(LEFT, TOP);  text('$' + hex4(a), VR_X + 14, y);
+    textAlign(RIGHT, TOP); text('$' + hex2(v) + '  ' + ch, VR_X + VR_W - 14, y);
+    y += 22;
+  }
+  noStroke(); fill(110); textSize(9); textAlign(LEFT, BOTTOM);
+  text('watch the copy loop fill it', VR_X + 12, VR_Y + VR_H - 8);
+  fill(0);
+}
+
+// Decode the ANTIC Display List in memory into disassembler-style entries.
+function decodeDisplayList(base) {
+  const out = [];
+  let a = base & 0xffff;
+  for (let n = 0; n < 24; n++) {
+    const b = mem[a];
+    let len = 1, text;
+    if ((b & 0x0f) === 0) {                                   // blank-line instruction
+      text = 'BLANK ' + (((b >> 4) & 7) + 1);
+    } else if (b === 0x01 || b === 0x41) {                    // JMP / JVB (2-byte address)
+      const t = mem[(a + 1) & 0xffff] | (mem[(a + 2) & 0xffff] << 8);
+      len = 3; text = (b === 0x41 ? 'JVB  $' : 'JMP  $') + hex4(t);
+    } else {                                                  // mode line (+ optional LMS)
+      const mode = b & 0x0f;
+      if (b & 0x40) {
+        const t = mem[(a + 1) & 0xffff] | (mem[(a + 2) & 0xffff] << 8);
+        len = 3; text = 'MODE ' + mode + ' +LMS $' + hex4(t);
+      } else { text = 'MODE ' + mode; }
+    }
+    const bytes = [];
+    for (let i = 0; i < len; i++) bytes.push(mem[(a + i) & 0xffff]);
+    out.push({ addr: a, bytes, text });
+    if (b === 0x41) break;                                    // JVB ends the list
+    a = (a + len) & 0xffff;
+  }
+  return out;
+}
+
+function drawDisplayList() {
+  drawBox(DLP_X, DLP_Y, DLP_W, DLP_H);
+  const start = (typeof anticDLStart === 'function') ? anticDLStart() : 0x0700;
+  label('DISPLAY LIST — ANTIC program @ $' + hex4(start), DLP_X + 10, DLP_Y + 8, 10);
+  noStroke(); fill(110); textSize(8); textAlign(LEFT, TOP);
+  text('addr  bytes      meaning', DLP_X + 12, DLP_Y + 24);
+  fill(0);
+
+  const list = decodeDisplayList(start);
+  const cur = (typeof anticDP !== 'undefined') ? anticDP : -1;
+  const live = (typeof anticLive !== 'undefined') && anticLive;
+  let y = DLP_Y + 38;
+  const lh = 15;
+  textSize(10);
+  for (const e of list) {
+    if (live && e.addr === cur) { noStroke(); fill(0); rect(DLP_X + 6, y - 1, DLP_W - 12, lh - 1); fill(255); }
+    else fill(0);
+    noStroke(); textAlign(LEFT, TOP);
+    const bytesStr = e.bytes.map(hex2).join(' ').padEnd(8, ' ');
+    text(hex4(e.addr) + '  ' + bytesStr + '  ' + e.text, DLP_X + 12, y);
+    y += lh;
+  }
+  noStroke(); fill(90); textSize(9); textAlign(LEFT, BOTTOM);
+  const dma = (typeof anticDMA !== 'undefined') ? anticDMA : null;
+  const foot = (live && dma)
+    ? '▶ reading screen $' + hex4(dma.addr) + ' → TV row ' + dma.row
+    : 'highlighted = line ANTIC is running now';
+  text(foot, DLP_X + 12, DLP_Y + DLP_H - 7);
+  fill(0);
 }
 
 function drawBox(x, y, w, h) { stroke(0); strokeWeight(1.5); noFill(); rect(x, y, w, h, 3); }

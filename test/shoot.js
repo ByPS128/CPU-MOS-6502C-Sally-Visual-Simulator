@@ -5,7 +5,7 @@ const path = require('path');
 
 (async () => {
   const browser = await chromium.launch({ channel: 'chrome' });
-  const page = await browser.newPage({ viewport: { width: 1420, height: 980 } });
+  const page = await browser.newPage({ viewport: { width: 1740, height: 980 } });
   const logs = [];
   page.on('console', m => logs.push('[' + m.type() + '] ' + m.text()));
   page.on('pageerror', e => logs.push('[PAGEERROR] ' + e.message));

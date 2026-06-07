@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>6502C "Sally" — Visual Simulator</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: #f4f4f4; color: #000;
+      font-family: "Courier New", monospace; }
+    #app { max-width: 1380px; margin: 0 auto; padding: 14px; }
+    #toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+      padding: 10px 4px; }
+    #toolbar button {
+      font-family: inherit; font-size: 14px; padding: 7px 16px; cursor: pointer;
+      background: #fff; color: #000; border: 1.5px solid #000; border-radius: 0; }
+    #toolbar button:hover { background: #000; color: #fff; }
+    #toolbar label { font-size: 13px; }
+    #toolbar select { font-family: inherit; font-size: 13px; padding: 6px 8px;
+      background: #fff; color: #000; border: 1.5px solid #000; border-radius: 0; }
+    #toolbar input[type=range] { vertical-align: middle; }
+    #canvas-holder canvas { border: 1.5px solid #000; background: #fff;
+      max-width: 100%; height: auto; display: block; }
+    .hint { font-size: 12px; color: #333; padding: 6px 4px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="toolbar">
+      <label>program
+        <select id="demo"></select>
+      </label>
+      <button id="run">▶ RUN</button>
+      <button id="pause">⏸ PAUSE</button>
+      <button id="step">⏭ STEP</button>
+      <button id="reset">⟲ RESET</button>
+      <label>&nbsp; speed
+        <input id="speed" type="range" min="2" max="30" value="18" />
+      </label>
+      <label>&nbsp;<input id="antic" type="checkbox" checked /> ANTIC live</label>
+    </div>
+    <div id="canvas-holder"></div>
+    <div class="hint">
+      Tečka běhá po sběrnici a ukazuje aktuální přenos dat mezi bloky CPU.
+      STEP = jeden krok, RUN = automatický běh, posuvník mění rychlost tečky.
+    </div>
+  </div>
+
+  <!-- p5.js -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
+  <!-- app (order matters: helpers first, sketch last) -->
+  <script src="js/util.js"></script>
+  <script src="js/opcodes.js"></script>
+  <script src="js/program.js"></script>
+  <script src="js/assembler.js"></script>
+  <script src="js/cpu.js"></script>
+  <script src="js/anticfont.js"></script>
+  <script src="js/antic.js"></script>
+  <script src="js/layout.js"></script>
+  <script src="js/sketch.js"></script>
+</body>
+</html>

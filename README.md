@@ -62,6 +62,11 @@ Když je zaškrtnuto **ANTIC live**, běží autenticky v **textovém režimu**:
 8. **Square (GR.8 graphics)** — program si **nainstaluje vlastní grafický Display
    List** (ANTIC **mode F**, 1 bit/pixel) a nakreslí do bitmapy obrys čtverce
    (1 bajt = 8 pixelů). Stejná RAM, jiný DL = místo textu grafika. Nejlépe v **turbu**.
+9. **Checkerboard (GR.8 graphics)** — vyplní bitmapu **šachovnicí** 8×8: každý řádek
+   střídá `$FF`/`$00` (EOR), startovní bajt se překlápí každých 8 řádků. Nejlépe v **turbu**.
+
+ASM panel i panel Display Listu se **samy scrollují za vykonávacím ukazatelem**, takže
+i dlouhý zdroják/DL je vidět (vpravo dole je indikátor rozsahu, např. `5–34/48`).
 
 Vlastní programy lze přidat do pole `DEMOS` v `js/program.js`.
 

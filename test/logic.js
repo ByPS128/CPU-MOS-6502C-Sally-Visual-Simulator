@@ -102,5 +102,12 @@ check('GR.8 bottom edge $10CE', sq.mem[0x10CE], 0xFF);       // row 17, byte 2
 check('GR.8 left pixel',  sq.mem[0x1026] & 0x80, 0x80);      // row 3, byte 2, bit 7 (x16)
 check('GR.8 right pixel', sq.mem[0x1027] & 0x01, 0x01);      // row 3, byte 3, bit 0 (x31)
 
+// 8: Checkerboard (GR.8) — rows toggle $FF/$00, band flips every 8 rows
+const cb = run(DEMOS[8].src);
+check('checker r0 b0', cb.mem[0x1000], 0xFF);
+check('checker r0 b1', cb.mem[0x1001], 0x00);
+check('checker r8 b0', cb.mem[0x1060], 0x00);                // band flipped after 8 rows
+check('checker r8 b1', cb.mem[0x1061], 0xFF);
+
 console.log(allPass ? '\nALL LOGIC TESTS PASS' : '\nLOGIC TEST FAILURES');
 process.exit(allPass ? 0 : 1);

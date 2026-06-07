@@ -204,6 +204,62 @@ side    LDY #$02
         .byte $41,$00,$07
 `,
   },
+  {
+    name: 'Checkerboard (GR.8 graphics)',
+    src: `; ---- ANTIC graphics (mode F): checkerboard ----
+; Same graphics display list, but the program fills
+; the whole bitmap with an 8x8 checkerboard: each row
+; toggles $FF/$00 per byte, and the starting value
+; flips every 8 rows. (Best with turbo.)
+screen = $1000
+ptr    = $80
+bandv  = $82          ; this row's starting byte ($FF or $00)
+bcount = $83          ; rows left until the band flips
+        *=$0600
+        LDA #$00      ; point ANTIC at our graphics DL ($0700)
+        STA $0230
+        LDA #$07
+        STA $0231
+        LDA #$00      ; ptr = screen ($1000)
+        STA ptr
+        LDA #$10
+        STA ptr+1
+        LDA #$FF      ; first band starts with $FF
+        STA bandv
+        LDA #$08
+        STA bcount
+        LDX #$14      ; 20 scanlines
+row     LDA bandv     ; starting byte for this row
+        LDY #$00
+col     STA (ptr),Y   ; write a byte (8 pixels)
+        EOR #$FF      ; alternate $FF / $00 across the row
+        INY
+        CPY #$0C      ; 12 bytes per row
+        BNE col
+        CLC           ; ptr += 12 (next scanline)
+        LDA ptr
+        ADC #$0C
+        STA ptr
+        LDA ptr+1
+        ADC #$00
+        STA ptr+1
+        DEC bcount    ; flip the band every 8 rows
+        BNE same
+        LDA bandv
+        EOR #$FF
+        STA bandv
+        LDA #$08
+        STA bcount
+same    DEX
+        BNE row
+        BRK
+
+        *=$0700
+        .byte $70,$70,$70,$4F,$00,$10
+        .byte $0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F
+        .byte $41,$00,$07
+`,
+  },
 ];
 
 let currentDemoSrc = DEMOS[0].src;

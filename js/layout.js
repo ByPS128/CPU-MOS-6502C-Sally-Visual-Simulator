@@ -171,7 +171,7 @@ function drawVRAM() {
 function decodeDisplayList(base) {
   const out = [];
   let a = base & 0xffff;
-  for (let n = 0; n < 24; n++) {
+  for (let n = 0; n < 64; n++) {
     const b = mem[a];
     let len = 1, text;
     if ((b & 0x0f) === 0) {                                   // blank-line instruction
@@ -207,17 +207,37 @@ function drawDisplayList() {
   const list = decodeDisplayList(start);
   const cur = (typeof anticDP !== 'undefined') ? anticDP : -1;
   const live = (typeof anticLive !== 'undefined') && anticLive;
-  let y = DLP_Y + 38;
-  const lh = 15;
+  const top = DLP_Y + 38, lh = 15;
+  const areaH = DLP_Y + DLP_H - top - 18;
+  const visible = Math.max(1, Math.floor(areaH / lh));
+  const n = list.length;
+
+  // vertical scroll: follow the line ANTIC is currently running
+  let curIdx = -1;
+  for (let i = 0; i < n; i++) if (list[i].addr === cur) { curIdx = i; break; }
+  let s = 0;
+  if (n > visible) s = constrain((curIdx >= 0 ? curIdx : 0) - Math.floor(visible / 2), 0, n - visible);
+
+  drawingContext.save();
+  drawingContext.beginPath();
+  drawingContext.rect(DLP_X + 4, top - 3, DLP_W - 8, areaH + 6);
+  drawingContext.clip();
   textSize(10);
-  for (const e of list) {
+  for (let i = 0; i < visible && s + i < n; i++) {
+    const e = list[s + i], y = top + i * lh;
     if (live && e.addr === cur) { noStroke(); fill(0); rect(DLP_X + 6, y - 1, DLP_W - 12, lh - 1); fill(255); }
     else fill(0);
     noStroke(); textAlign(LEFT, TOP);
     const bytesStr = e.bytes.map(hex2).join(' ').padEnd(8, ' ');
     text(hex4(e.addr) + '  ' + bytesStr + '  ' + e.text, DLP_X + 12, y);
-    y += lh;
   }
+  drawingContext.restore();
+
+  if (n > visible) {   // scroll indicator
+    noStroke(); fill(120); textSize(8); textAlign(RIGHT, TOP);
+    text((s + 1) + '–' + (s + visible) + '/' + n, DLP_X + DLP_W - 10, DLP_Y + 24);
+  }
+
   noStroke(); fill(90); textSize(9); textAlign(LEFT, BOTTOM);
   const dma = (typeof anticDMA !== 'undefined') ? anticDMA : null;
   const foot = (live && dma)
@@ -464,31 +484,35 @@ function drawASM(currentLine) {
   label('ASSEMBLY  —  ' + currentDemoName, AX + 10, AY + 8, 12);
 
   const addrOf = (ln) => (ln.addr !== null && ln.addr !== undefined) ? hex4(ln.addr) + '  ' : '      ';
-  const avail = AW - 24;
+  const fs = 12, lh = fs + 6;
+  const top = AY + 30;
+  const areaH = AY + AH - top - 8;
+  const visible = Math.max(1, Math.floor(areaH / lh));
+  const n = asm.lines.length;
 
-  // Auto-fit: shrink the font just enough that the widest line fits the panel
-  // (monospace scales linearly), so nothing ever spills into the schematic.
-  textSize(13);
-  let maxW = 1;
-  for (const ln of asm.lines) maxW = Math.max(maxW, textWidth(addrOf(ln) + ln.raw));
-  const fs = Math.max(8, Math.min(13, Math.floor(13 * avail / maxW)));
-  const lh = fs + 6;
+  // vertical scroll: keep the executing line in view (with a little context)
+  let start = 0;
+  if (n > visible) start = constrain((currentLine >= 0 ? currentLine : 0) - Math.floor(visible / 2), 0, n - visible);
 
-  // clip to the panel interior as a safety net
+  // clip to the panel interior so long lines / scrolling never spill out
   drawingContext.save();
   drawingContext.beginPath();
-  drawingContext.rect(AX + 4, AY + 24, AW - 8, AH - 28);
+  drawingContext.rect(AX + 4, top - 4, AW - 8, areaH + 8);
   drawingContext.clip();
 
-  let y = AY + 32;
   textSize(fs);
-  asm.lines.forEach((ln, idx) => {
+  for (let i = 0; i < visible && start + i < n; i++) {
+    const idx = start + i, ln = asm.lines[idx], y = top + i * lh;
     if (idx === currentLine) { noStroke(); fill(0); rect(AX + 6, y - 2, AW - 12, lh - 1); fill(255); }
     else fill(0);
     noStroke(); textAlign(LEFT, TOP);
     text(addrOf(ln) + ln.raw, AX + 12, y);
-    y += lh;
-  });
+  }
   drawingContext.restore();
+
+  if (n > visible) {   // scroll indicator
+    noStroke(); fill(120); textSize(9); textAlign(RIGHT, BOTTOM);
+    text((start + 1) + '–' + (start + visible) + '/' + n, AX + AW - 10, AY + AH - 6);
+  }
   fill(0);
 }

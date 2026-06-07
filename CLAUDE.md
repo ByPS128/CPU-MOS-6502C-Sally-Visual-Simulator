@@ -90,8 +90,10 @@ util → opcodes → program → assembler → cpu → anticfont → antic → l
   (`drawBox`, `anticDataPath`, `ATARI_FONT`).
 - **Verify visually, not just in node.** Most regressions are runtime/visual; `test/shoot.js`
   catches them (console errors + state asserts + screenshots).
-- **`drawingContext`** (the canvas 2D ctx) is used for clipping (e.g. the ASM panel clips
-  its listing so it can't spill into the schematic; the listing font also auto-shrinks to fit).
+- **`drawingContext`** (the canvas 2D ctx) is used for clipping. The ASM panel and the
+  Display List panel both clip to their box and **scroll vertically to follow the
+  execution pointer** (current ASM line / active DL line), with a `start–end/total`
+  indicator — so arbitrarily long source / display lists stay usable.
 - **Reset order:** `setup()` and `resetMachine()` call `cpuReset()` (reallocates `mem`,
   assembles the demo) THEN `anticReset()` (lays the DL, clears screen, sets shadow regs).
   Keep that order or ANTIC's setup gets wiped.

@@ -113,6 +113,7 @@ loop    INX           ; X = X + 1
 ; repeat -> the text blinks. (Use the turbo box!)
 SAVMSC = $58          ; OS shadow: screen-memory pointer
 ptr    = $80          ; our zero-page pointer
+len    = $82          ; remembered string length
         *=$0600
         LDA SAVMSC    ; screen address, low byte
         STA ptr
@@ -121,10 +122,11 @@ ptr    = $80          ; our zero-page pointer
         LDY #$00
 copy    LDA text,Y    ; next character (screen code)
         CMP #$9B      ; Atari end-of-line = end marker
-        BEQ blink
+        BEQ setlen    ; end -> Y now holds the length
         STA (ptr),Y   ; store it through the pointer
         INY
         BNE copy
+setlen  STY len       ; remember length (no magic constant)
 ; ---- blink loop (forever) ----
 blink   LDX #$60      ; outer delay count
 wait    LDY #$00
@@ -137,11 +139,69 @@ flip    LDA (ptr),Y   ; read a character back
         EOR #$80      ; toggle inverse-video bit
         STA (ptr),Y   ; write it back
         INY
-        CPY #$0C      ; 12 characters
+        CPY len       ; compare to the stored length
         BNE flip
         JMP blink     ; do it again
 
 text    .byte "Hello World!",$9B
+`,
+  },
+  {
+    name: 'Square (GR.8 graphics)',
+    src: `; ---- ANTIC graphics mode F (GR.8, 1bpp) ----
+; Installs its OWN graphics display list, then draws
+; a rectangle outline into the bitmap (1 byte = 8 px).
+; Same RAM, different DL = graphics instead of text!
+; (Best with the turbo box checked.)
+screen = $1000        ; bitmap, 12 bytes per scanline
+ptr    = $80
+        *=$0600
+        LDA #$00      ; point ANTIC at our graphics DL ($0700)
+        STA $0230
+        LDA #$07
+        STA $0231
+        LDX #$00      ; clear the bitmap (240 bytes)
+        LDA #$00
+clr     STA screen,X
+        INX
+        CPX #$F0
+        BNE clr
+        LDX #$02      ; top + bottom edges: bytes 2..3 = $FF (16 px wide)
+        LDA #$FF
+edge    STA screen+24,X    ; row 2  (2*12)
+        STA screen+204,X   ; row 17 (17*12)
+        INX
+        CPX #$04
+        BNE edge
+        LDA #$24      ; side edges: ptr = $1000 + 36 (row 3)
+        STA ptr
+        LDA #$10
+        STA ptr+1
+        LDX #$0E      ; 14 rows (3..16)
+side    LDY #$02
+        LDA (ptr),Y
+        ORA #$80      ; left pixel  (byte 2, bit 7 = x16)
+        STA (ptr),Y
+        LDY #$03
+        LDA (ptr),Y
+        ORA #$01      ; right pixel (byte 3, bit 0 = x31)
+        STA (ptr),Y
+        CLC           ; ptr += 12 (next scanline)
+        LDA ptr
+        ADC #$0C
+        STA ptr
+        LDA ptr+1
+        ADC #$00
+        STA ptr+1
+        DEX
+        BNE side
+        BRK
+
+; graphics display list at $0700: 24 blank, mode F + LMS $1000, more mode F, JVB
+        *=$0700
+        .byte $70,$70,$70,$4F,$00,$10
+        .byte $0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F,$0F
+        .byte $41,$00,$07
 `,
   },
 ];

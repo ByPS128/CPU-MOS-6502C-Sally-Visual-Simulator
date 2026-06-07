@@ -181,10 +181,11 @@ function decodeDisplayList(base) {
       len = 3; text = (b === 0x41 ? 'JVB  $' : 'JMP  $') + hex4(t);
     } else {                                                  // mode line (+ optional LMS)
       const mode = b & 0x0f;
+      const mn = (mode === 0x0f) ? 'MODE F' : 'MODE ' + mode;  // F = GR.8 bitmap
       if (b & 0x40) {
         const t = mem[(a + 1) & 0xffff] | (mem[(a + 2) & 0xffff] << 8);
-        len = 3; text = 'MODE ' + mode + ' +LMS $' + hex4(t);
-      } else { text = 'MODE ' + mode; }
+        len = 3; text = mn + ' +LMS $' + hex4(t);
+      } else { text = mn; }
     }
     const bytes = [];
     for (let i = 0; i < len; i++) bytes.push(mem[(a + i) & 0xffff]);
@@ -278,31 +279,46 @@ function drawTV() {
   text('video out', cx, (CHIP_Y + CHIP_H + TV_Y) / 2);
 
   drawBox(TV_X, TV_Y, TV_W, TV_H);
-  label('TV — ANTIC text mode (reads $1000)', TV_X + 10, TV_Y + 8, 11);
-
+  const gfx = (typeof anticGfx !== 'undefined') && anticGfx;
   const cols = (typeof anticCols !== 'undefined') ? anticCols : 20;
   const rows = (typeof anticRows !== 'undefined') ? anticRows : 4;
-  const pxW = cols * 8, pxH = rows * 8;
+  const base = (typeof anticBase !== 'undefined') ? anticBase : 0x1000;
+  label(gfx ? ('TV — ANTIC graphics (mode F) @ $' + hex4(base))
+            : 'TV — ANTIC text mode (reads $1000)', TV_X + 10, TV_Y + 8, 11);
+
+  const pxW = cols * 8, pxH = gfx ? rows : rows * 8;   // graphics: 1 scanline per mode line
   const areaW = TV_W - 20, areaH = TV_H - 56;
   const cell = Math.max(1, Math.floor(Math.min(areaW / pxW, areaH / pxH)));
   const gw = pxW * cell, gh = pxH * cell;
   const gx = TV_X + (TV_W - gw) / 2, gy = TV_Y + 30 + (areaH - gh) / 2;
 
   noStroke(); fill(244); rect(gx - 4, gy - 4, gw + 8, gh + 8);    // screen background
-  const font = (typeof ATARI_FONT !== 'undefined') ? ATARI_FONT : null;
-  if (font) for (let i = 0; i < cols * rows; i++) {
-    const raw = (typeof tvCells !== 'undefined' && tvCells[i] != null) ? tvCells[i] : 0;
-    const inv = (raw & 0x80) !== 0;          // bit 7 = inverse video
-    const glyph = font[raw & 0x7f];
-    const cc = i % cols, rr = Math.floor(i / cols);
-    const x0 = gx + cc * 8 * cell, y0 = gy + rr * 8 * cell;
-    if (inv) { noStroke(); fill(0); rect(x0, y0, 8 * cell, 8 * cell); }   // inverse cell bg
-    if (!glyph) continue;
-    fill(inv ? 244 : 0);                      // glyph ink (light on black if inverse)
-    for (let gr = 0; gr < 8; gr++) {
-      const byte = glyph[gr]; if (!byte) continue;
-      for (let gb = 0; gb < 8; gb++) if (byte & (0x80 >> gb))
-        rect(x0 + gb * cell, y0 + gr * cell, cell, cell);
+  fill(0);
+  if (gfx) {
+    // bitmap: each byte = 8 horizontal pixels, each mode-F line = 1 scanline tall
+    for (let i = 0; i < cols * rows; i++) {
+      const byte = (typeof tvCells !== 'undefined' && tvCells[i] != null) ? tvCells[i] : 0;
+      if (!byte) continue;
+      const cc = i % cols, rr = Math.floor(i / cols);
+      for (let bit = 0; bit < 8; bit++) if (byte & (0x80 >> bit))
+        rect(gx + (cc * 8 + bit) * cell, gy + rr * cell, cell, cell);
+    }
+  } else {
+    const font = (typeof ATARI_FONT !== 'undefined') ? ATARI_FONT : null;
+    if (font) for (let i = 0; i < cols * rows; i++) {
+      const raw = (typeof tvCells !== 'undefined' && tvCells[i] != null) ? tvCells[i] : 0;
+      const inv = (raw & 0x80) !== 0;          // bit 7 = inverse video
+      const glyph = font[raw & 0x7f];
+      const cc = i % cols, rr = Math.floor(i / cols);
+      const x0 = gx + cc * 8 * cell, y0 = gy + rr * 8 * cell;
+      if (inv) { fill(0); rect(x0, y0, 8 * cell, 8 * cell); }   // inverse cell bg
+      if (!glyph) continue;
+      fill(inv ? 244 : 0);                     // glyph ink (light on black if inverse)
+      for (let gr = 0; gr < 8; gr++) {
+        const byte = glyph[gr]; if (!byte) continue;
+        for (let gb = 0; gb < 8; gb++) if (byte & (0x80 >> gb))
+          rect(x0 + gb * cell, y0 + gr * cell, cell, cell);
+      }
     }
   }
   noFill(); stroke(0); strokeWeight(1); rect(gx - 4, gy - 4, gw + 8, gh + 8);

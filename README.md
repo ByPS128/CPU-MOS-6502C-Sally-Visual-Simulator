@@ -59,6 +59,9 @@ Když je zaškrtnuto **ANTIC live**, běží autenticky v **textovém režimu**:
    ukazatel a kopíruje řetězec přes `(ptr),Y` (`.byte "Hello World!"` se automaticky
    převede na screen codes). Pak **nekonečně bliká** — čeká, XORne každý znak `$80`
    (přepne **inverzní video**), opakuje. Nejlépe se zaškrtnutým **turbo**.
+8. **Square (GR.8 graphics)** — program si **nainstaluje vlastní grafický Display
+   List** (ANTIC **mode F**, 1 bit/pixel) a nakreslí do bitmapy obrys čtverce
+   (1 bajt = 8 pixelů). Stejná RAM, jiný DL = místo textu grafika. Nejlépe v **turbu**.
 
 Vlastní programy lze přidat do pole `DEMOS` v `js/program.js`.
 

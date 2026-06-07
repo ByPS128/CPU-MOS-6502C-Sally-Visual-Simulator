@@ -61,6 +61,10 @@ util → opcodes → program → assembler → cpu → anticfont → antic → l
   the screen (no DMA dot, no HALT). Needed for loop-heavy programs (e.g. the blink demo).
 - **Inverse video:** screen-code bit 7 ($80) = inverse. `drawTV` renders such cells with
   a black background and light glyph. XOR-ing screen bytes with $80 toggles it.
+- **Graphics mode:** `anticDecodeDL()` walks the DL and reports text (mode 2) vs graphics
+  (mode F, 1bpp). In graphics, 1 byte = 8 pixels and each mode-F line = 1 scanline;
+  `drawTV` renders the bitmap. The OS text DL lives at `$0480` so a demo can install its
+  own DL at `$0700` (set SDLST) and switch ANTIC into graphics — see the GR.8 square demo.
 
 ## Memory map (in the simulated 64 KB `mem`)
 
@@ -69,7 +73,8 @@ util → opcodes → program → assembler → cpu → anticfont → antic → l
 | `$0058/$0059` | SAVMSC shadow (screen ptr) — set by `anticReset` |
 | `$0230/$0231` | SDLST shadow (display-list ptr) — set by `anticReset` |
 | `$0600` | program code (entry point) |
-| `$0700` | Display List (laid down by `anticReset`, like the Atari OS) |
+| `$0480` | OS text Display List (laid down by `anticReset`) |
+| `$0700` | free for a demo's own Display List (e.g. the GR.8 graphics demo) |
 | `$0710..` | demo data / results |
 | `$0750` | demo data tables (`.byte`) in the Hello World demo |
 | `$1000` | screen memory = "VRAM" (20×4 text); the CPU writes here, ANTIC reads it |

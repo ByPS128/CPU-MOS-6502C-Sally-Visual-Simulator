@@ -85,11 +85,22 @@ check('.byte string i', sb.mem[0x0701], 0x69);
 const eo = run(prog(['LDA #$28', 'EOR #$80', 'STA $0710']));
 check('EOR #$80 inverse', eo.mem[0x0710], 0xA8);
 
+// CPY zp (compare Y to a memory variable)
+const cz = run('        *=$0600\n        LDY #$03\n        STY $90\n        LDY #$03\n        CPY $90\n        BNE no\n        LDX #$AA\nno      BRK\n');
+check('CPY zp equal -> branch', cz.X, 0xAA);
+
 // 6: Hello World (inverse blink) — writes via SAVMSC ptr, then blinks (XOR $80)
 const port = run(DEMOS[6].src, (m) => { m[0x58] = 0x00; m[0x59] = 0x10; });  // OS sets SAVMSC -> $1000
 const HW = [0x28, 0x65, 0x6C, 0x6C, 0x6F, 0x00, 0x37, 0x6F, 0x72, 0x6C, 0x64, 0x01]; // "Hello World!"
 const portOk = HW.every((b, i) => { const v = port.mem[0x1000 + i]; return v === b || v === (b ^ 0x80); });
 check('blink demo text @ $1000 (normal or inverse)', portOk ? 1 : 0, 1);
+
+// 7: Square (GR.8 graphics) — draws a rectangle outline into the bitmap at $1000
+const sq = run(DEMOS[7].src);
+check('GR.8 top edge $101A',   sq.mem[0x101A], 0xFF);        // row 2, byte 2
+check('GR.8 bottom edge $10CE', sq.mem[0x10CE], 0xFF);       // row 17, byte 2
+check('GR.8 left pixel',  sq.mem[0x1026] & 0x80, 0x80);      // row 3, byte 2, bit 7 (x16)
+check('GR.8 right pixel', sq.mem[0x1027] & 0x01, 0x01);      // row 3, byte 3, bit 0 (x31)
 
 console.log(allPass ? '\nALL LOGIC TESTS PASS' : '\nLOGIC TEST FAILURES');
 process.exit(allPass ? 0 : 1);

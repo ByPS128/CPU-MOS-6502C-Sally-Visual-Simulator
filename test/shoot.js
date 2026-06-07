@@ -111,6 +111,18 @@ const path = require('path');
     await page.waitForTimeout(100);
   }
   const blinkOk = sawNormal && sawInv;
+
+  // --- GR.8 graphics: demo installs a graphics DL; ANTIC renders the bitmap square ---
+  await page.selectOption('#demo', '7');     // Square (GR.8 graphics); turbo still on
+  await page.click('#run');
+  let gs = null;
+  for (let i = 0; i < 150; i++) {
+    gs = await page.evaluate(() => ({ gfx: anticGfx, cols: anticCols, tvtop: tvCells[2 * anticCols + 2] }));
+    if (gs.gfx && gs.tvtop === 0xFF) break;   // graphics mode + top edge painted
+    await page.waitForTimeout(100);
+  }
+  const gfxOk = gs && gs.gfx === true && gs.cols === 12 && gs.tvtop === 0xFF;
+  await page.screenshot({ path: path.join(__dirname, 'shot-gfx.png') });
   await page.uncheck('#turbo');
 
   console.log('speed resp :', speedOk ? 'PASS' : 'FAIL', '(slow=' + slow + ' fast=' + fast + ')');
@@ -120,6 +132,7 @@ const path = require('path');
   console.log('chip decode:', pokeOk ? 'PASS' : 'FAIL', 'chipSeen=' + chipSeen, JSON.stringify(ps));
   console.log('Atari port :', portOk ? 'PASS' : 'FAIL', JSON.stringify(portState));
   console.log('turbo blink:', blinkOk ? 'PASS' : 'FAIL', 'normal=' + sawNormal + ' inverse=' + sawInv);
+  console.log('GR.8 gfx   :', gfxOk ? 'PASS' : 'FAIL', JSON.stringify(gs));
   console.log('console errors:', logs.length ? logs.join('\n') : '(none)');
-  process.exit(speedOk && anticOk && irOk && finalOk && pokeOk && portOk && blinkOk && logs.length === 0 ? 0 : 1);
+  process.exit(speedOk && anticOk && irOk && finalOk && pokeOk && portOk && blinkOk && gfxOk && logs.length === 0 ? 0 : 1);
 })();

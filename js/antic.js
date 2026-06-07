@@ -7,20 +7,26 @@
 // (cycle-stealing); after the last line it rests (vertical blank) and raises NMI,
 // letting the CPU run free. All timing follows the speed slider via stepFrames().
 //
-// Memory map (set up by anticReset, like the Atari OS does for GRAPHICS 0):
-//   $0700  Display List        $1000  screen memory (20x4 text)
+// A demo can install its OWN display list (e.g. graphics mode F) by pointing the
+// SDLST shadow at it — anticDecodeDL then renders text or bitmap accordingly.
+//
+// Memory map (text set up by anticReset, like the Atari OS does for GRAPHICS 0):
+//   $0480  text Display List    $1000  screen memory (20x4 text, or a bitmap)
 //   shadow regs: $0230/$0231 = DL ptr,  $0058/$0059 = screen ptr
 
-const ANTIC_DL_BASE = 0x0700;
+const ANTIC_DL_BASE = 0x0480;      // OS text display list (off $0700 so demos can place their own DL)
 const ANTIC_SCREEN_BASE = 0x1000;
-const ANTIC_COLS = 20;
-const ANTIC_ROWS = 4;
+const ANTIC_COLS = 20;             // text columns
+const ANTIC_ROWS = 4;              // text rows
+const ANTIC_GFX_BYTES = 12;        // bytes/scanline in graphics mode F (12*8 = 96 px wide)
 const ANTIC_LINE_COOLDOWN = 3;     // frames the CPU runs between scanline DMAs
 
 let anticLive = true;
-let anticCols = ANTIC_COLS;
-let anticRows = ANTIC_ROWS;
-let tvCells = [];                  // length cols*rows: character codes (0 = space)
+let anticGfx = false;              // false = text (mode 2), true = bitmap (mode F)
+let anticCols = ANTIC_COLS;        // bytes per row (chars in text, pixel-bytes in graphics)
+let anticRows = ANTIC_ROWS;        // number of mode lines this frame
+let anticBase = ANTIC_SCREEN_BASE; // screen/bitmap base (from the DL's LMS)
+let tvCells = [];                  // length cols*rows: char codes (text) or pixel bytes (graphics)
 
 // frame-walk state
 let anticDP = ANTIC_DL_BASE;       // display-list cursor (address in mem)
@@ -41,9 +47,30 @@ function anticVBlankFrames() { return Math.max(20, stepFrames() * 4); }
 function anticDLStart() { return ((mem[0x0231] << 8) | mem[0x0230]) || ANTIC_DL_BASE; }
 function anticScreenStart() { return ((mem[0x0059] << 8) | mem[0x0058]) || ANTIC_SCREEN_BASE; }
 
-// Lay down a standard GRAPHICS-0-style Display List + clear the text screen.
+// Walk the Display List in memory and report what to render this frame:
+//   { gfx, base, rows, cols }   (text mode 2 -> font; graphics mode F -> bitmap)
+function anticDecodeDL() {
+  let a = anticDLStart();
+  let base = anticScreenStart(), found = false, gfx = false, rows = 0;
+  for (let n = 0; n < 256; n++) {
+    const b = mem[a & 0xffff];
+    if (b === 0x41) break;                                   // JVB = end of frame
+    if ((b & 0x0f) === 0) { a = (a + 1) & 0xffff; continue; }   // blank lines
+    if (b === 0x01) { a = (mem[(a + 1) & 0xffff] | (mem[(a + 2) & 0xffff] << 8)) & 0xffff; continue; } // JMP
+    if (b & 0x40) {                                          // mode line with LMS (2 addr bytes)
+      const t = mem[(a + 1) & 0xffff] | (mem[(a + 2) & 0xffff] << 8);
+      if (!found) { base = t; found = true; }
+      a = (a + 3) & 0xffff;
+    } else { a = (a + 1) & 0xffff; }
+    if ((b & 0x0f) === 0x0f) gfx = true;                     // mode F => graphics
+    rows++;
+  }
+  return { gfx, base, rows, cols: gfx ? ANTIC_GFX_BYTES : ANTIC_COLS };
+}
+
+// Lay down a standard GRAPHICS-0-style text Display List + clear the text screen.
 function anticReset() {
-  // Display List at $0700: 24 blank scanlines, mode 2 + LMS -> screen, more mode 2 rows, JVB.
+  // Display List: 24 blank scanlines, mode 2 + LMS -> screen, more mode 2 rows, JVB.
   let d = ANTIC_DL_BASE;
   mem[d++] = 0x70; mem[d++] = 0x70; mem[d++] = 0x70;           // 3x 8 blank scanlines
   mem[d++] = 0x42; mem[d++] = ANTIC_SCREEN_BASE & 0xff; mem[d++] = (ANTIC_SCREEN_BASE >> 8) & 0xff; // mode2 + LMS
@@ -57,16 +84,18 @@ function anticReset() {
   mem[0x0230] = ANTIC_DL_BASE & 0xff; mem[0x0231] = (ANTIC_DL_BASE >> 8) & 0xff;
   mem[0x0058] = ANTIC_SCREEN_BASE & 0xff; mem[0x0059] = (ANTIC_SCREEN_BASE >> 8) & 0xff;
 
-  anticCols = ANTIC_COLS; anticRows = ANTIC_ROWS;
-  tvCells = new Array(ANTIC_COLS * ANTIC_ROWS).fill(0);
-  anticFrameStart();
+  tvCells = [];
+  anticFrameStart();          // decode the DL we just laid down -> sets dims + tvCells
   anticDMA = null; anticHalt = false; anticCooldown = 0; anticIdle = 0; nmiFlash = 0; anticFrames = 0;
 }
 
 function anticFrameStart() {
+  const d = anticDecodeDL();
+  anticGfx = d.gfx; anticCols = d.cols; anticRows = Math.max(1, d.rows); anticBase = d.base;
   anticDP = anticDLStart();
-  anticScan = anticScreenStart();
+  anticScan = d.base;
   anticRowOut = 0;
+  if (tvCells.length !== anticCols * anticRows) tvCells = new Array(anticCols * anticRows).fill(0);
 }
 
 // Paint one text row: read cols character codes from screen memory into tvCells.
@@ -78,9 +107,9 @@ function anticPaintRow(row) {
 // from video memory (per the display list's screen base). No cycle-stealing.
 function anticPaintAll() {
   if (nmiFlash > 0) nmiFlash--;
-  const base = anticScreenStart();
+  anticFrameStart();           // decode DL -> dims + base (handles text or graphics)
   for (let r = 0; r < anticRows; r++)
-    for (let c = 0; c < anticCols; c++) tvCells[r * anticCols + c] = mem[(base + r * anticCols + c) & 0xffff];
+    for (let c = 0; c < anticCols; c++) tvCells[r * anticCols + c] = mem[(anticBase + r * anticCols + c) & 0xffff];
   anticHalt = false; anticDMA = null;
 }
 

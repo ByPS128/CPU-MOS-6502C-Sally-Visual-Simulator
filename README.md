@@ -1,5 +1,7 @@
 # 6502C "Sally" — Visual Simulator
 
+**▶ [Živé demo](https://byps128.github.io/CPU-MOS-6502C-Sally-Visual-Simulator/)** — spustí se rovnou v prohlížeči (GitHub Pages).
+
 p5.js vizualizace vnitřku 8-bitového CPU **MOS Technology 6502C "Sally"** z Atari 800XL.
 Bílé pozadí, černá drátová grafika — v duchu legendárního **MECC 6502 Simulatoru (1982)**.
 

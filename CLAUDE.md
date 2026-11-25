@@ -106,8 +106,6 @@ util → opcodes → program → assembler → cpu → anticfont → antic → l
   `.byte "string"` does this conversion for you (`atasciiToScreen`); demos that store
   numeric codes use the internal values directly.
 - **Not cycle-accurate** — it's a teaching visualization (like the MECC original).
-- Git: line-ending warnings (LF→CRLF) on Windows are harmless. `gh` CLI is at
-  `C:\Program Files\GitHub CLI\gh.exe` (not always on PATH in a fresh shell).
 
 ## Inspiration
 

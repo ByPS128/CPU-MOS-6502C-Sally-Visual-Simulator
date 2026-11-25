@@ -101,13 +101,23 @@ util → opcodes → program → assembler → cpu → anticfont → antic → l
   `DLP_X`, ...). Derived values (`RAM_TAPX`) follow automatically; if you move panels, also
   bump `#app max-width` in `index.html` and the viewport in `test/shoot.js`.
 - **ATASCII ≠ screen codes.** ANTIC text mode indexes the font by *internal screen
-  code*, not ASCII (internal = ascii − $20 for $20–$7F). Writing raw ASCII to screen
-  memory shows shifted/wrong glyphs — the classic Atari beginner bug. The assembler's
-  `.byte "string"` does this conversion for you (`atasciiToScreen`); demos that store
-  numeric codes use the internal values directly.
+  code*, not ASCII: ATASCII `$20–$5F` → internal `$00–$3F` (−$20), `$00–$1F` → `$40–$5F`
+  (+$40), `$60–$7F` (lowercase) unchanged. Writing raw ASCII to screen memory shows
+  shifted/wrong glyphs — the classic Atari beginner bug. The assembler's `.byte "string"`
+  does this conversion for you (`atasciiToScreen` in `js/assembler.js`); shifting the
+  whole `$20–$7F` range by −$20 dumps lowercase into the graphics zone (a bug we already
+  had). Demos that store numeric codes use the internal values directly.
 - **Not cycle-accurate** — it's a teaching visualization (like the MECC original).
 
 ## Inspiration
 
-MECC 6502 Simulator (1982), part of "Apple Assembly Language". Tea Leaves video:
-https://www.youtube.com/watch?v=aZvss4XnceU
+MECC 6502 Simulator (1982), part of MECC's "Apple Assembly Language v1.0" package (disk
+image MECC-T691): an Apple II hi-res program that animates the data flow of each
+instruction across the CPU blocks. The author remembers it from the Atari; an Atari port
+was never confirmed, the identity of the program is. The author recalls a white
+background, black wireframe schematic and black text, which is the style recreated here.
+
+- Tea Leaves video "A 6502 Simulator Mystery - Solved!" (best reference for layout and
+  animation): https://www.youtube.com/watch?v=aZvss4XnceU
+- Hackaday writeup: https://hackaday.com/2023/11/11/a-mysterious-6502-apple-2-simulator/
+- MECC disk images: https://brutaldeluxe.fr/projects/mecc/disks/
